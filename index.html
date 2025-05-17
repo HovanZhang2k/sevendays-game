@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>七日轮回</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="game-container">
+        <header>
+            <h1>七日轮回</h1>
+            <div class="game-stats" id="game-stats" style="display: none;">
+                <div class="stat">
+                    <span>天数：</span>
+                    <span id="current-day">1</span>
+                </div>
+                <!--
+                <div class="stat">
+                    <span>分数：</span>
+                    <span id="current-score">0</span>
+                </div>
+                <div class="stat">
+                    <span>认知值：</span>
+                    <span id="cognition">0</span>
+                </div>
+                -->
+            </div>
+        </header>
+
+        <main>
+            <div id="start-screen" class="start-screen">
+                <h2>欢迎来到七日轮回</h2>
+                <p>在这个世界中，你需要遵守规则，探索真相...</p>
+                <button id="start-game-btn" class="start-btn">开始游戏</button>
+            </div>
+
+            <div id="game-content" style="display: none;">
+                <div id="question-container" class="question-block">
+                    <!-- 问题内容将通过JS动态插入 -->
+                </div>
+
+                <div id="options-container" class="options-block">
+                    <!-- 选项内容将通过JS动态插入 -->
+                </div>
+
+                <div id="ending-container" class="ending-block hidden">
+                    <!-- 结局内容将通过JS动态插入 -->
+                </div>
+            </div>
+        </main>
+
+        <div id="rules-panel" class="rules-panel" style="display: none;">
+            <h3>已验证规则</h3>
+            <ul id="verified-rules"></ul>
+        </div>
+
+        <div id="death-notice" class="death-notice hidden">
+            <h2>你触犯了规则！</h2>
+            <p>即将进入下一天...</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { gameManager } from './js/gameLogic.js';
+        import { RULES } from './js/gameData.js';
+        
+        // 获取DOM元素
+        const startScreen = document.getElementById('start-screen');
+        const gameContent = document.getElementById('game-content');
+        const gameStats = document.getElementById('game-stats');
+        const rulesPanel = document.getElementById('rules-panel');
+        const startGameBtn = document.getElementById('start-game-btn');
+
+        // 开始游戏按钮点击事件
+        startGameBtn.addEventListener('click', () => {
+            gameManager.startGame();
+            startScreen.style.display = 'none';
+            gameContent.style.display = 'block';
+            gameStats.style.display = 'flex';
+            rulesPanel.style.display = 'block';
+            updateGameState();
+            displayQuestion();
+        });
+
+        function updateGameState() {
+            const state = gameManager.getGameState();
+            if (!state.gameStarted) return;
+
+            document.getElementById('current-day').textContent = state.currentDay;
+            
+            // 更新已验证规则列表
+            const rulesList = document.getElementById('verified-rules');
+            rulesList.innerHTML = state.verifiedRules
+                .filter(ruleId => RULES[ruleId])
+                .map(ruleId => `<li>${RULES[ruleId].description}</li>`)
+                .join('');
+        }
+
+        function displayQuestion() {
+            const state = gameManager.getGameState();
+            if (!state.gameStarted) return;
+
+            const question = state.currentQuestion;
+            
+            // 结局
+            if (!question) {
+                if (state.currentDay > 7 || state.ending) {
+                    const ending = state.ending;
+                    document.getElementById('question-container').innerHTML = `
+                        <h2>游戏结束</h2>
+                        <div class="ending-result">
+                            <h3>${ending.name} ${ending.stars}</h3>
+                            <p>${ending.description}</p>
+                            <button onclick="location.reload()">重新开始</button>
+                        </div>
+                    `;
+                    document.getElementById('options-container').classList.add('hidden');
+                    return;
+                } else {
+                    // 新一天提示
+                    document.getElementById('question-container').innerHTML = `
+                        <h2>Day ${state.currentDay}</h2>
+                        <p>新的一天开始了...</p>
+                    `;
+                    setTimeout(() => {
+                        updateGameState();
+                        displayQuestion();
+                    }, 1000);
+                    return;
+                }
+            }
+
+            // 正常题目
+            document.getElementById('question-container').innerHTML = `
+                <h2>Day ${question.day} - ${question.time}</h2>
+                <p>${question.text}</p>
+            `;
+
+            const optionsHtml = question.options.map(opt => `
+                <button class="option-btn" data-choice="${opt.id}">
+                    ${opt.text}
+                </button>
+            `).join('');
+            
+            document.getElementById('options-container').innerHTML = optionsHtml;
+            document.getElementById('options-container').classList.remove('hidden');
+            // 恢复按钮可用
+            document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = false);
+        }
+
+        // 处理选项点击
+        document.getElementById('options-container').addEventListener('click', (e) => {
+            if (e.target.classList.contains('option-btn')) {
+                const choiceId = e.target.dataset.choice;
+                const result = gameManager.makeChoice(null, choiceId);
+                
+                if (result && result.isDeath) {
+                    // 禁用所有选项按钮
+                    document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true);
+                    document.getElementById('death-notice').classList.remove('hidden');
+                    setTimeout(() => {
+                        document.getElementById('death-notice').classList.add('hidden');
+                        updateGameState();
+                        displayQuestion();
+                    }, 1000); // 等待时间缩短为1秒
+                } else {
+                    updateGameState();
+                    displayQuestion();
+                }
+            }
+        });
+
+        // 初始化
+        updateGameState();
+        displayQuestion();
+    </script>
+</body>
+</html> 
