@@ -139,13 +139,27 @@
             `;
 
             const optionsHtml = question.options.map(opt => `
-                <button class="option-btn" data-choice="${opt.id}">
+                <button class="option-btn ${question.multi ? 'checkbox-btn' : ''}" 
+                        data-choice="${opt.id}"
+                        ${question.multi ? 'data-selected="false"' : ''}>
+                    ${question.multi ? '<span class="checkbox"></span>' : ''}
                     ${opt.text}
                 </button>
             `).join('');
             
             document.getElementById('options-container').innerHTML = optionsHtml;
             document.getElementById('options-container').classList.remove('hidden');
+            
+            // 添加确认按钮用于多选题
+            if (question.multi) {
+                const confirmBtn = document.createElement('button');
+                confirmBtn.id = 'confirm-choices';
+                confirmBtn.className = 'confirm-btn';
+                confirmBtn.textContent = '确认选择';
+                confirmBtn.disabled = true;
+                document.getElementById('options-container').appendChild(confirmBtn);
+            }
+            
             // 恢复按钮可用
             document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = false);
         }
@@ -153,21 +167,63 @@
         // 处理选项点击
         document.getElementById('options-container').addEventListener('click', (e) => {
             if (e.target.classList.contains('option-btn')) {
-                const choiceId = e.target.dataset.choice;
-                const result = gameManager.makeChoice(null, choiceId);
+                const btn = e.target;
+                const question = gameManager.getGameState().currentQuestion;
                 
-                if (result && result.isDeath) {
-                    // 禁用所有选项按钮
-                    document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true);
-                    document.getElementById('death-notice').classList.remove('hidden');
-                    setTimeout(() => {
-                        document.getElementById('death-notice').classList.add('hidden');
+                if (question.multi) {
+                    // 多选题处理
+                    const isSelected = btn.dataset.selected === 'true';
+                    btn.dataset.selected = !isSelected;
+                    btn.classList.toggle('selected');
+                    
+                    // 更新确认按钮状态
+                    const selectedCount = document.querySelectorAll('.option-btn[data-selected="true"]').length;
+                    const confirmBtn = document.getElementById('confirm-choices');
+                    if (confirmBtn) {
+                        // 根据题目要求限制选择数量
+                        const maxChoices = question.text.includes('三个') ? 3 : 
+                                         question.text.includes('两个') ? 2 : 3;
+                        confirmBtn.disabled = selectedCount === 0 || selectedCount > maxChoices;
+                    }
+                } else {
+                    // 单选题处理
+                    const choiceId = btn.dataset.choice;
+                    const result = gameManager.makeChoice(null, choiceId);
+                    
+                    if (result && result.isDeath) {
+                        // 禁用所有选项按钮
+                        document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true);
+                        document.getElementById('death-notice').classList.remove('hidden');
+                        setTimeout(() => {
+                            document.getElementById('death-notice').classList.add('hidden');
+                            updateGameState();
+                            displayQuestion();
+                        }, 1000);
+                    } else {
                         updateGameState();
                         displayQuestion();
-                    }, 1000); // 等待时间缩短为1秒
-                } else {
-                    updateGameState();
-                    displayQuestion();
+                    }
+                }
+            } else if (e.target.id === 'confirm-choices') {
+                // 处理多选题确认
+                const selectedChoices = Array.from(document.querySelectorAll('.option-btn[data-selected="true"]'))
+                    .map(btn => btn.dataset.choice);
+                
+                if (selectedChoices.length > 0) {
+                    const result = gameManager.makeChoice(null, selectedChoices);
+                    
+                    if (result && result.isDeath) {
+                        document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true);
+                        document.getElementById('death-notice').classList.remove('hidden');
+                        setTimeout(() => {
+                            document.getElementById('death-notice').classList.add('hidden');
+                            updateGameState();
+                            displayQuestion();
+                        }, 1000);
+                    } else {
+                        updateGameState();
+                        displayQuestion();
+                    }
                 }
             }
         });

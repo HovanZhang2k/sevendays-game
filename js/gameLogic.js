@@ -45,6 +45,61 @@ class GameManager {
     makeChoice(questionId, choiceId) {
         const question = this.getCurrentQuestion();
         if (!question) return null;
+
+        // 处理多选题
+        if (question.multi && Array.isArray(choiceId)) {
+            const choices = choiceId.map(id => question.options.find(opt => opt.id === id)).filter(Boolean);
+            if (choices.length === 0) return null;
+
+            // 计算总分和总认知值
+            let result = {
+                score: choices.reduce((sum, choice) => sum + (choice.score || 0), 0),
+                cognition: choices.reduce((sum, choice) => sum + (choice.cognition || 0), 0),
+                isDeath: choices.some(choice => choice.isDeath),
+                verifiedRules: []
+            };
+
+            // 检查是否违反规则
+            if (question.rules && !result.isDeath) {
+                question.rules.forEach(ruleId => {
+                    if (['R4', 'R6', 'R7'].includes(ruleId)) {
+                        this.state.falseRuleCount = (this.state.falseRuleCount || 0) + 1;
+                    }
+                });
+
+                // 规则验证（只统计真规则，且必须未死亡且分数为正或有认知加分）
+                if ((result.score > 0 || result.cognition > 0)) {
+                    question.rules.forEach(ruleId => {
+                        if (!this.state.verifiedRules.includes(ruleId) && ['R1','R2','R3','R5'].includes(ruleId)) {
+                            this.state.verifiedRules.push(ruleId);
+                            result.verifiedRules.push(ruleId);
+                        }
+                    });
+                }
+            }
+
+            // 更新分数和认知
+            this.state.score += result.score;
+            this.state.cognition += result.cognition;
+
+            // 题目跳转逻辑
+            if (result.isDeath) {
+                this.state.deathCount++;
+                this.state.currentDay++;
+                this.state.currentQuestion = 0;
+            } else {
+                this.state.currentQuestion++;
+                if (this.state.currentQuestion >= 8) {
+                    this.state.currentDay++;
+                    this.state.currentQuestion = 0;
+                }
+            }
+
+            this.saveGameState();
+            return result;
+        }
+
+        // 处理单选题
         const choice = question.options.find(opt => opt.id === choiceId);
         if (!choice) return null;
 
@@ -100,23 +155,18 @@ class GameManager {
 
         // 题目跳转逻辑
         if (result.isDeath) {
-            // 死亡直接跳到下一天第一题
             this.state.deathCount++;
             this.state.currentDay++;
             this.state.currentQuestion = 0;
         } else {
-            // 正常推进
             this.state.currentQuestion++;
-            // 每天8题，做完自动进入下一天
             if (this.state.currentQuestion >= 8) {
                 this.state.currentDay++;
                 this.state.currentQuestion = 0;
             }
         }
 
-        // 保存游戏状态
         this.saveGameState();
-
         return result;
     }
 

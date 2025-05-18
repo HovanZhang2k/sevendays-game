@@ -89,12 +89,76 @@ h1 {
     transition: all 0.3s ease;
     text-align: left;
     font-size: 1em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .option-btn:hover {
     background-color: var(--secondary-color);
     color: white;
     transform: translateY(-2px);
+}
+
+/* 多选题样式 */
+.checkbox-btn {
+    position: relative;
+    padding-left: 40px;
+}
+
+.checkbox-btn .checkbox {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--secondary-color);
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.checkbox-btn.selected .checkbox {
+    background-color: var(--secondary-color);
+}
+
+.checkbox-btn.selected .checkbox::after {
+    content: '✓';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 12px;
+}
+
+.checkbox-btn.selected {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+/* 确认按钮样式 */
+.confirm-btn {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1em;
+    margin-top: 15px;
+    transition: all 0.3s ease;
+}
+
+.confirm-btn:hover:not(:disabled) {
+    background-color: #c0392b;
+    transform: translateY(-2px);
+}
+
+.confirm-btn:disabled {
+    background-color: #bdc3c7;
+    cursor: not-allowed;
+    transform: none;
 }
 
 /* 规则面板 */
