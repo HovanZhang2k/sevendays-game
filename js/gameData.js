@@ -100,7 +100,7 @@ const QUESTIONS = [
         day: 1,
         time: 'Daytime',
         id: '1-5',
-        text: '茶水间的咖啡机提示"请使用主手操作"。你会？',
+        text: '茶水间的咖啡机提示"请使用左手操作"。你会？',
         rules: ['R7'],
         options: [
             { id: 'A', text: '用右手按启动键', score: 5 },
